@@ -21,3 +21,8 @@ friction = 0.05
 
 positions = simulate_ball_motion(mass, angle, friction)
 print(positions)
+
+if __name__ == "__main__":
+    positions = simulate_ball_motion(mass, angle, friction)
+    print(positions)
+

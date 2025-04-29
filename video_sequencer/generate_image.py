@@ -1,7 +1,7 @@
 from PIL import Image, ImageDraw, ImageFont
 import os
 
-def generate_fake_image(prompt, frame_number, output_folder="frames"):
+def generate_image(prompt, frame_number, output_folder="frames"):
     os.makedirs(output_folder, exist_ok=True)
     img = Image.new('RGB', (512, 512), color = (255, 255, 255))
     d = ImageDraw.Draw(img)

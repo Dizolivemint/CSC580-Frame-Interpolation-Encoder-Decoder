@@ -1,7 +1,7 @@
-from physics_simulator import simulate_ball_motion
+from video_sequencer.simulate_physics import simulate_ball_motion
 from prompt_generator import generate_prompts
-from video_sequencer.fake_diffusion import generate_fake_image
-from video_sequencer.frame_stitcher import assemble_video
+from video_sequencer.generate_image import generate_fake_image
+from video_sequencer.aseemble_video import assemble_video
 
 # 1. Inputs
 mass = 1.0
