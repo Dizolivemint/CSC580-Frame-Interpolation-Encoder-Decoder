@@ -1,1 +1,1 @@
-# CSC580-Image2Video-Prompt-Generator
+# Frame Interpolation Encoder-Decoder
