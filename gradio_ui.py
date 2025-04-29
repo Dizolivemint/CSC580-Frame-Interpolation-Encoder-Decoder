@@ -6,76 +6,14 @@ import pandas as pd
 import random
 import matplotlib.pyplot as plt
 from model_training.model_torch import EncoderDecoder
+from model_training.train import train_model
+from model_training.generate_training_data import generate_training_data
 from video_sequencer.simulate_physics import PhysicsSimulator
 from video_sequencer.generate_frames_and_video import generate_frames_and_video
 import os
 
 # --- Available Physics Types ---
 physics_types = ["ball_motion", "camera_motion"]  # Extendable easily
-
-# --- Data Generation ---
-def generate_training_data(physics_type, num_samples=1000, time_steps=10, save_dir="data/"):
-    simulator = PhysicsSimulator()
-    samples = []
-
-    for _ in range(num_samples):
-        if physics_type == "ball_motion":
-            mass = random.uniform(0.5, 5.0)
-            angle = random.uniform(10, 45)
-            friction = random.uniform(0.05, 0.5)
-            trajectory = simulator.simulate_ball_motion(mass, angle, friction, time_steps)
-            samples.append({
-                'mass': mass,
-                'angle': angle,
-                'friction': friction,
-                'trajectory': trajectory
-            })
-        
-        elif physics_type == "camera_motion":
-            initial_velocity = random.uniform(0, 5)
-            acceleration = random.uniform(-1, 1)
-            trajectory = simulator.simulate_camera_motion(initial_velocity, acceleration, time_steps)
-            samples.append({
-                'initial_velocity': initial_velocity,
-                'acceleration': acceleration,
-                'trajectory': trajectory
-            })
-
-    df = pd.DataFrame(samples)
-    os.makedirs(save_dir, exist_ok=True)
-    filename = f"{save_dir}/{physics_type}_data.pkl"
-    df.to_pickle(filename)
-    return f"✅ Saved {num_samples} samples to {filename}"
-
-# --- Training ---
-def train_model(physics_type, hidden_size=64, lr=0.001, epochs=20):
-    data_path = f"data/{physics_type}_data.pkl"
-    model_path = f"model_training/{physics_type}_model.pth"
-
-    df = pd.read_pickle(data_path)
-    if physics_type == "ball_motion":
-        X = torch.tensor(df[['mass', 'angle', 'friction']].values, dtype=torch.float32)
-    elif physics_type == "camera_motion":
-        X = torch.tensor(df[['initial_velocity', 'acceleration']].values, dtype=torch.float32)
-    else:
-        raise ValueError(f"Unknown physics type: {physics_type}")
-
-    y = torch.tensor(df['trajectory'].tolist(), dtype=torch.float32)
-    model = EncoderDecoder(output_seq_len=y.shape[1])
-    criterion = torch.nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-
-    losses = []
-    for epoch in range(epochs):
-        optimizer.zero_grad()
-        outputs = model(X)
-        loss = criterion(outputs, y)
-        loss.backward()
-        optimizer.step()
-        losses.append(loss.item())
-
-    torch.save(model.state_dict(), model_path)
-    return f"✅ Trained and saved {physics_type} model to {model_path}", losses
 
 # --- Prediction ---
 def predict_trajectory(physics_type, *inputs):
@@ -106,25 +44,16 @@ def plot_trajectory(physics_type, *inputs):
     ax.set_title(f"Predicted Trajectory: {physics_type.replace('_', ' ').title()}")
     ax.set_xlabel("Time Step")
     ax.set_ylabel("Position (m)")
-    return fig
+    return fig, pred
   
 # --- Video Generation ---
 def predict_plot_video(physics_type, mass, angle, friction):
-    # Predict
-    pred = predict_trajectory(physics_type, mass, angle, friction)
-
-    # Plot Trajectory
-    fig, ax = plt.subplots()
-    ax.plot(range(len(pred)), pred, marker='o')
-    ax.set_title(f"Predicted Trajectory: {physics_type.replace('_', ' ').title()}")
-    ax.set_xlabel("Time Step")
-    ax.set_ylabel("Position (m)")
+    fig, pred = plot_trajectory(physics_type, mass, angle, friction)
 
     # Generate Frames + Video
-    video_path = generate_frames_and_video(pred)
+    video_mp4_path = generate_frames_and_video(pred)
 
-    return fig, video_path
-
+    return fig, video_mp4_path
 
 # --- Gradio Interface ---
 with gr.Blocks() as demo:
@@ -155,8 +84,13 @@ with gr.Blocks() as demo:
         loss_plot = gr.Plot(label="Training Loss Curve")
         train_btn = gr.Button("Train Model")
 
-        def run_training(physics_type, epochs):
-            msg, losses = train_model(physics_type, epochs=epochs)
+        def run_training(physics_type, epochs, early_stopping, patience):
+            msg, losses = train_model(
+                physics_type=physics_type,
+                epochs=epochs,
+                early_stopping=early_stopping,
+                patience=patience
+            )
             fig, ax = plt.subplots()
             ax.plot(losses)
             ax.set_title("Training Loss Curve")
@@ -178,12 +112,12 @@ with gr.Blocks() as demo:
             friction = gr.Slider(0.01, 0.5, value=0.2, label="Friction")
         predict_btn = gr.Button("Predict Trajectory")
         pred_plot = gr.Plot(label="Trajectory Prediction")
-        pred_animation = gr.Video(label="Predicted Animation")
+        pred_video = gr.Video(label="Generated Video")
 
         predict_btn.click(
             fn=predict_plot_video,
             inputs=[physics_type, mass, angle, friction],
-            outputs=[pred_plot, pred_animation]
+            outputs=[pred_plot, pred_video]
         )
 
 

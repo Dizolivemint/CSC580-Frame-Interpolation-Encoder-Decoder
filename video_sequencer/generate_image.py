@@ -15,8 +15,8 @@ def generate_image(prompt, frame_number, ball_position_normalized, output_folder
     d = ImageDraw.Draw(img)
     
     # Ramp: draw a simple diagonal line
-    ramp_start = (50, 450)  # bottom-left
-    ramp_end = (450, 50)    # top-right
+    ramp_start = (450, 450)  # top-left
+    ramp_end = (50, 50)    # bottom-right
     d.line([ramp_start, ramp_end], fill=(0, 0, 0), width=5)
 
     # Compute ball position along the ramp

@@ -18,4 +18,10 @@ def generate_frames_and_video(positions, output_folder="frames", fps=5):
 
     output_video_path = os.path.join(output_folder, "output_video.mp4")
     assemble_video(output_folder, output_video_path, fps=fps)
+    
     return output_video_path
+
+if __name__ == "__main__":
+    positions = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    generate_frames_and_video(positions)
+

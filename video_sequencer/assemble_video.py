@@ -1,14 +1,18 @@
-import cv2
+from moviepy import ImageSequenceClip
 import os
 
-def assemble_video(frame_folder, output_path, fps=10):
-    images = [img for img in sorted(os.listdir(frame_folder)) if img.endswith(".png")]
-    frame = cv2.imread(os.path.join(frame_folder, images[0]))
-    height, width, layers = frame.shape
+def assemble_video(frame_folder, output_mp4_path, output_webm_path=None, fps=10):
+    images = sorted([
+        os.path.join(frame_folder, img)
+        for img in os.listdir(frame_folder)
+        if img.endswith(".png")
+    ])
+    
+    clip = ImageSequenceClip(images, fps=fps)
 
-    video = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (width,height))
+    # Save MP4 (H.264)
+    clip.write_videofile(output_mp4_path, codec='libx264', audio=False)
 
-    for image in images:
-        video.write(cv2.imread(os.path.join(frame_folder, image)))
-
-    video.release()
+    if output_webm_path:
+        # Save WebM (VP8 or VP9)
+        clip.write_videofile(output_webm_path, codec='vp9', audio=False)
