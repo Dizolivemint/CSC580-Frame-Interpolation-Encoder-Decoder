@@ -7,6 +7,7 @@ import random
 import matplotlib.pyplot as plt
 from model_training.model_torch import EncoderDecoder
 from video_sequencer.simulate_physics import PhysicsSimulator
+from video_sequencer.generate_frames_and_video import generate_frames_and_video
 import os
 
 # --- Available Physics Types ---
@@ -106,6 +107,24 @@ def plot_trajectory(physics_type, *inputs):
     ax.set_xlabel("Time Step")
     ax.set_ylabel("Position (m)")
     return fig
+  
+# --- Video Generation ---
+def predict_plot_video(physics_type, mass, angle, friction):
+    # Predict
+    pred = predict_trajectory(physics_type, mass, angle, friction)
+
+    # Plot Trajectory
+    fig, ax = plt.subplots()
+    ax.plot(range(len(pred)), pred, marker='o')
+    ax.set_title(f"Predicted Trajectory: {physics_type.replace('_', ' ').title()}")
+    ax.set_xlabel("Time Step")
+    ax.set_ylabel("Position (m)")
+
+    # Generate Frames + Video
+    video_path = generate_frames_and_video(pred)
+
+    return fig, video_path
+
 
 # --- Gradio Interface ---
 with gr.Blocks() as demo:
@@ -128,6 +147,10 @@ with gr.Blocks() as demo:
         with gr.Row():
             train_physics_type = gr.Dropdown(choices=physics_types, label="Physics Type")
             epochs = gr.Slider(5, 100, value=20, label="Epochs", step=1)
+        
+        early_stopping_checkbox = gr.Checkbox(label="Enable Early Stopping", value=False)
+        patience_slider = gr.Slider(1, 20, value=5, label="Patience Steps")
+    
         train_output = gr.Textbox(label="Training Log")
         loss_plot = gr.Plot(label="Training Loss Curve")
         train_btn = gr.Button("Train Model")
@@ -143,24 +166,26 @@ with gr.Blocks() as demo:
 
         train_btn.click(
             fn=run_training,
-            inputs=[train_physics_type, epochs],
+            inputs=[train_physics_type, epochs, early_stopping_checkbox, patience_slider],
             outputs=[train_output, loss_plot]
         )
 
     with gr.Tab("Prediction"):
         with gr.Row():
-            pred_physics_type = gr.Dropdown(choices=physics_types, label="Physics Type")
+            physics_type = gr.Dropdown(choices=physics_types, label="Physics Type")
             mass = gr.Slider(0.5, 5.0, value=1.0, label="Mass (kg)")
             angle = gr.Slider(5, 45, value=30, label="Ramp Angle (degrees)")
             friction = gr.Slider(0.01, 0.5, value=0.2, label="Friction")
         predict_btn = gr.Button("Predict Trajectory")
         pred_plot = gr.Plot(label="Trajectory Prediction")
+        pred_animation = gr.Video(label="Predicted Animation")
 
         predict_btn.click(
-            fn=plot_trajectory,
-            inputs=[pred_physics_type, mass, angle, friction],
-            outputs=pred_plot
+            fn=predict_plot_video,
+            inputs=[physics_type, mass, angle, friction],
+            outputs=[pred_plot, pred_animation]
         )
+
 
 if __name__ == "__main__":
     demo.launch()
