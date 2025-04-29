@@ -36,6 +36,7 @@ def generate_training_data(physics_type, num_samples=1000, time_steps=10, save_d
     filename = f"{save_dir}/{physics_type}_data.pkl"
     df.to_pickle(filename)
     print(f"✅ Saved {num_samples} samples to {filename}")
+    return f"✅ Saved {num_samples} samples to {filename}"
 
 if __name__ == "__main__":
     generate_training_data()

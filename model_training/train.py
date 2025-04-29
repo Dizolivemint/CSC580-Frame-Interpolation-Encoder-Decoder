@@ -56,3 +56,4 @@ def train_model(physics_type, hidden_size=64, lr=0.001, epochs=20, early_stoppin
     # Save model
     torch.save(model.state_dict(), model_path)
     print(f"✅ Model saved to {model_path}")
+    return f"✅ Trained and saved {physics_type} model to {model_path}", losses
