@@ -10,7 +10,7 @@ friction = 0.2
 
 # 2. Simulate Physics
 simulator = PhysicsSimulator()
-positions = simulator.simulate_ball_motion(mass, angle, friction, time_steps=5)
+positions = simulator.simulate_ball_motion(mass, angle, friction, time_steps=50)
 
 # 3. Generate Prompts
 prompts = generate_prompts(positions)

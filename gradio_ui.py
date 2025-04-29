@@ -11,6 +11,7 @@ from model_training.generate_training_data import generate_training_data
 from video_sequencer.simulate_physics import PhysicsSimulator
 from video_sequencer.generate_frames_and_video import generate_frames_and_video
 import os
+import torch.nn as nn
 
 # --- Available Physics Types ---
 physics_types = ["ball_motion", "camera_motion"]  # Extendable easily
@@ -25,13 +26,22 @@ def predict_trajectory(physics_type, *inputs):
     input_dim = len(sample_data.columns) - 1  # trajectory is 1 column
 
     output_seq_len = len(sample_data.iloc[0]['trajectory'])
-    model = EncoderDecoder(output_seq_len=output_seq_len)
+    first_traj = sample_data.iloc[0]['trajectory']
+    if isinstance(first_traj[0], (list, tuple)):  # If each timestep is (x,y)
+        output_dim = len(first_traj[0])
+    else:
+        output_dim = 1
+        
+    model = EncoderDecoder(input_dim=3, output_seq_len=output_seq_len, output_dim=2)
+    model.output_layer = nn.Linear(model.decoder_lstm.hidden_size, output_dim)
     model.load_state_dict(torch.load(model_path))
     model.eval()
 
     inputs_tensor = torch.tensor([inputs], dtype=torch.float32)
     with torch.no_grad():
-        prediction = model(inputs_tensor).numpy()[0]
+        prediction = model(inputs_tensor)
+        prediction = prediction.cpu().numpy()[0]
+        
     return prediction
 
 # --- Plotting ---
@@ -51,7 +61,7 @@ def predict_plot_video(physics_type, mass, angle, friction):
     fig, pred = plot_trajectory(physics_type, mass, angle, friction)
 
     # Generate Frames + Video
-    video_mp4_path = generate_frames_and_video(pred)
+    video_mp4_path = generate_frames_and_video(pred, angle_degrees=angle)
 
     return fig, video_mp4_path
 

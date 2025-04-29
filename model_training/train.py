@@ -40,7 +40,7 @@ def train_model(physics_type, hidden_size=64, lr=0.001, epochs=20, early_stoppin
         current_loss = loss.item()
         losses.append(current_loss)
         
-        print(f"Epoch {epoch+1}/{epochs}, Loss: {current_loss():.6f}")
+        print(f"Epoch {epoch+1}/{epochs}, Loss: {current_loss:.6f}")
         
         # Early Stopping Logic
         if early_stopping:
