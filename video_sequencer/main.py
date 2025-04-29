@@ -1,4 +1,4 @@
-from video_sequencer.simulate_physics import simulate_ball_motion
+from video_sequencer.simulate_physics import PhysicsSimulator
 from prompt_generator import generate_prompts
 from video_sequencer.generate_image import generate_fake_image
 from video_sequencer.aseemble_video import assemble_video
@@ -9,7 +9,8 @@ angle = 30.0
 friction = 0.2
 
 # 2. Simulate Physics
-positions = simulate_ball_motion(mass, angle, friction, time_steps=5)
+simulator = PhysicsSimulator()
+positions = simulator.simulate_ball_motion(mass, angle, friction, time_steps=5)
 
 # 3. Generate Prompts
 prompts = generate_prompts(positions)
