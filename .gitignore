@@ -172,3 +172,12 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# output
+*.png
+*.mp4
+*.gif
+*.jpg
+*.jpeg
+*.webp
+*.heic
