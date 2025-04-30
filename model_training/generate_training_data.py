@@ -1,6 +1,7 @@
 import random
 import pandas as pd
 from video_sequencer.simulate_physics import PhysicsSimulator
+from physics_types import PhysicsType, BallMotionSample, CameraMotionSample, PhysicsSample, Trajectory
 
 def generate_training_data(physics_type, num_samples=1000, time_steps=50, save_dir="data/"):
     simulator = PhysicsSimulator()

@@ -1,7 +1,8 @@
 from PIL import Image, ImageDraw, ImageFont
 import os
+from utils.normalize_interpolate import normalize_interpolate
 
-def generate_image(prompt, frame_number, x_m, y_m, output_folder="frames", ramp_start = (450, 450),ramp_end = (50, 50), ramp_length=5.0, max_height=2.5):
+def generate_image(prompt, frame_number, normalized_pos, output_folder="frames", ramp_start=(64, 64),ramp_end=(448, 448), img_size=(512, 512), ball_radius=15):
     """
     Args:
         prompt (str): Text prompt (optional, for annotation)
@@ -16,21 +17,15 @@ def generate_image(prompt, frame_number, x_m, y_m, output_folder="frames", ramp_
     img = Image.new('RGB', img_size, color=(255, 255, 255))
     d = ImageDraw.Draw(img)
     
-    d.line([ramp_start, ramp_end], fill=(0, 0, 0), width=5)
+    # Position of the ball
+    x, y = normalize_interpolate(ramp_start, ramp_end, normalized_pos)
 
-    # Convert real-world (x, y) to canvas coordinates
-    # We'll map x in [0, ramp_length] → pixels between ramp_start[0] to ramp_end[0]
-    # and y in [0, max_height] → ramp_start[1] to ramp_end[1] (inverted y-axis)
-    x_ratio = x_m / ramp_length
-    y_ratio = y_m / max_height
-
-    ball_x = ramp_start[0] + (ramp_end[0] - ramp_start[0]) * x_ratio
-    ball_y = ramp_start[1] + (ramp_end[1] - ramp_start[1]) * y_ratio
-
+    # Draw the ramp line
+    d.line([ramp_start, ramp_end], fill=(150, 150, 150), width=3)
+    
     # Draw ball
-    ball_radius = 15
     d.ellipse(
-        [(ball_x - ball_radius, ball_y - ball_radius), (ball_x + ball_radius, ball_y + ball_radius)],
+        [(x - ball_radius, y - ball_radius), (x + ball_radius, y + ball_radius)],
         fill=(255, 0, 0), outline=(0, 0, 0)
     )
 
@@ -43,3 +38,57 @@ def generate_image(prompt, frame_number, x_m, y_m, output_folder="frames", ramp_
     file_path = os.path.join(output_folder, f"frame_{frame_number:03}.png")
     img.save(file_path)
     return file_path
+  
+def draw_scene(
+    entities,
+    frame_number,
+    prompt="",
+    output_folder="frames",
+    img_size=(512, 512),
+    background_color=(255, 255, 255)
+):
+    """
+    Draws a general physics frame from a list of entities.
+
+    Args:
+        entities (List[Dict]): Each entity has a type, position, shape, etc.
+        frame_number (int): Index of the frame
+        prompt (str): Annotation label
+        output_folder (str): Directory to save frames
+        img_size (Tuple[int, int]): Image size
+        background_color (Tuple[int, int, int]): RGB color
+    """
+    os.makedirs(output_folder, exist_ok=True)
+
+    img = Image.new('RGB', img_size, color=background_color)
+    draw = ImageDraw.Draw(img)
+
+    for entity in entities:
+        etype = entity.get("type")
+        pos = entity.get("position")  # (x, y) in pixels
+        radius = entity.get("radius", 5)
+        color = entity.get("color", (255, 0, 0))
+
+        if etype == "particle":
+            x, y = pos
+            draw.ellipse(
+                [(x - radius, y - radius), (x + radius, y + radius)],
+                fill=color, outline=(0, 0, 0)
+            )
+
+        elif etype == "line":
+            draw.line(entity["points"], fill=color, width=entity.get("width", 2))
+
+        elif etype == "text":
+            try:
+                font = ImageFont.truetype("arial.ttf", entity.get("size", 16))
+            except:
+                font = ImageFont.load_default()
+            draw.text(pos, entity["text"], fill=color, font=font)
+
+        # Future types: vector fields, heatmaps, force arrows, etc.
+
+
+    path = os.path.join(output_folder, f"frame_{frame_number:03}.png")
+    img.save(path)
+    return path

@@ -26,14 +26,13 @@ def predict_trajectory(physics_type, *inputs):
     input_dim = len(sample_data.columns) - 1  # trajectory is 1 column
 
     output_seq_len = len(sample_data.iloc[0]['trajectory'])
-    first_traj = sample_data.iloc[0]['trajectory']
-    if isinstance(first_traj[0], (list, tuple)):  # If each timestep is (x,y)
-        output_dim = len(first_traj[0])
-    else:
-        output_dim = 1
-        
-    model = EncoderDecoder(input_dim=3, output_seq_len=output_seq_len, output_dim=2)
-    model.output_layer = nn.Linear(model.decoder_lstm.hidden_size, output_dim)
+    frame_shape = sample_data.iloc[0]['trajectory'][0].shape  # (H, W)
+
+    model = EncoderDecoder(
+        input_dim=input_dim,
+        output_seq_len=output_seq_len,
+        output_shape=frame_shape
+    )
     model.load_state_dict(torch.load(model_path))
     model.eval()
 

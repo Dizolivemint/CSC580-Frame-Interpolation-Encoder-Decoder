@@ -1,8 +1,9 @@
 import glob
 import os
 from video_sequencer.assemble_video import assemble_video
-from video_sequencer.generate_image import generate_image
+from video_sequencer.generate_image import generate_image, draw_scene
 import math
+from utils.normalize_interpolate import normalize_interpolate
 
 def compute_ramp_endpoints(angle_degrees, canvas_size=(512, 512), margin=64):
     """
@@ -50,17 +51,26 @@ def generate_frames_and_video(positions, angle_degrees=30.0, ramp_length=5.0, ou
     
     max_height = ramp_length * math.sin(math.radians(angle_degrees))
 
-    for i, (x_m, y_m) in enumerate(positions):
+    for i, normalized_pos in enumerate(positions):
+        x, y = normalize_interpolate(ramp_start, ramp_end, normalized_pos)
         generate_image(
-            prompt=f"x={x_m:.2f}, y={y_m:.2f}",
+            prompt=f"norm={normalized_pos:.2f}",
             frame_number=i,
-            x_m=x_m,
-            y_m=y_m,
+            normalized_pos=normalized_pos,
             ramp_start=ramp_start,
             ramp_end=ramp_end,
             output_folder=output_folder,
             ramp_length=ramp_length,
             max_height=max_height
+        )
+        draw_scene(
+            entities=[
+                {"type": "line", "points": [ramp_start, ramp_end], "color": (150, 150, 150)},
+                {"type": "particle", "position": (x, y), "radius": 10, "color": (255, 0, 0)},
+            ],
+            frame_number=i,
+            prompt="Ball motion",
+            output_folder="frames"
         )
 
     output_video_path = os.path.join(output_folder, "output_video.mp4")
@@ -69,6 +79,6 @@ def generate_frames_and_video(positions, angle_degrees=30.0, ramp_length=5.0, ou
     return output_video_path
 
 if __name__ == "__main__":
-    positions = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    positions = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     generate_frames_and_video(positions)
 

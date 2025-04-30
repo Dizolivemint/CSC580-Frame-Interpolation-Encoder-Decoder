@@ -13,7 +13,7 @@ fastapi==0.115.12
 ffmpy==0.5.0
 filelock==3.18.0
 fonttools==4.57.0
--e git+https://github.com/Dizolivemint/CSC580-Frame-Interpolation-Encoder-Decoder.git@1b60a4cb34abf7fe41a3893f090f1e77fbfdf0d4#egg=frame_interpolation
+-e git+https://github.com/Dizolivemint/CSC580-Frame-Interpolation-Encoder-Decoder.git@c163607bb23328b96049a7f44798ca046dafc03a#egg=frame_interpolation
 fsspec==2025.3.2
 gradio==5.27.1
 gradio_client==1.9.1
@@ -39,6 +39,7 @@ orjson==3.10.16
 packaging==25.0
 pandas==2.2.3
 pillow==10.4.0
+piqa==1.3.2
 proglog==0.1.11
 pydantic==2.11.3
 pydantic_core==2.33.1
@@ -48,6 +49,7 @@ pyparsing==3.2.3
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.0
 python-multipart==0.0.20
+pytorch-msssim==1.0.0
 pytz==2025.2
 PyYAML==6.0.2
 requests==2.32.3
@@ -63,6 +65,7 @@ starlette==0.46.2
 sympy==1.14.0
 tomlkit==0.13.2
 torch==2.7.0
+torchvision==0.22.0
 tqdm==4.67.1
 typer==0.15.3
 typing-inspection==0.4.0
