@@ -6,6 +6,9 @@ from tqdm import tqdm
 from torch.utils.data import Dataset, DataLoader
 from torchmetrics.functional.image import structural_similarity_index_measure
 import numpy as np
+from config import normalize_input, get_input_fields
+from utils.path_utils import resolve_path
+import os
 
 class PhysicsTrajectoryDataset(Dataset):
     def __init__(self, filepath, physics_type):
@@ -25,15 +28,13 @@ class PhysicsTrajectoryDataset(Dataset):
 
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
-        if self.physics_type == "ball_motion":
-            inputs = torch.tensor([row['mass'], row['angle'], row['friction']], dtype=torch.float32)
-        elif self.physics_type == "camera_motion":
-            inputs = torch.tensor([row['initial_velocity'], row['acceleration']], dtype=torch.float32)
-        else:
-            raise ValueError(f"Unknown physics type: {self.physics_type}")
+        fields = get_input_fields(self.physics_type)
+        inputs = torch.tensor(normalize_input(self.physics_type, *[row[f] for f in fields]), dtype=torch.float32)
         
-        trajectory_np = np.array(row['trajectory'])  # shape: (T, H, W)
+        trajectory_np = np.array(row['trajectory'])
         trajectory = torch.from_numpy(trajectory_np).float()
+        
+
         return inputs, trajectory
 
 def compute_ssim(pred, target, device):
@@ -64,56 +65,22 @@ def squarify_1d_sequence(x):
         raise ValueError(f"T={T} must be a perfect square for squarify, got {T}.")
     return x.view(B, C, S, S)
 
-def hybrid_loss(pred, target, alpha=0.8, device='cuda'):
-    mse_loss = nn.MSELoss()
-
-    def format_tensor(x):
-        if x.ndim == 2:
-            # [B, T] -> [B, 1, 1, T]
-            x = x.unsqueeze(1).unsqueeze(2)
-        elif x.ndim == 3:
-            if x.shape[1] == 1:
-                # [B, 1, T] -> [B, 1, 1, T]
-                x = x.view(x.shape[0], 1, 1, x.shape[-1])
-            else:
-                # [B, T, F] -> [B, 1, 1, T] after permute
-                x = x.permute(0, 2, 1).unsqueeze(2)
-        elif x.ndim == 4:
-            pass  # [B, 1, H, W] — good
-        else:
-            raise ValueError(f"Unexpected shape: {x.shape}")
-        return x
-
-    pred = format_tensor(pred).to(device)
-    target = format_tensor(target).to(device)
-
+def bce_dot_loss(pred, target, device):
+    """
+    Compute binary cross entropy loss between predicted and target dot-maps.
+    Assumes pred and target have shape [B, T, H, W] with values in [0, 1].
+    """
     if pred.shape != target.shape:
         raise ValueError(f"Shape mismatch: pred {pred.shape} vs target {target.shape}")
 
-    # Default fallback
-    ssim_val = torch.tensor(0.0, device=device)
-
-    # Decide whether to use SSIM
-    B, C, H, W = pred.shape
-    if H == 1:
-        # 1D sequence
-        try:
-            pred_sq = squarify_1d_sequence(pred)
-            target_sq = squarify_1d_sequence(target)
-            ssim_val = compute_ssim(pred_sq, target_sq, device)
-        except ValueError:
-            # Cannot squarify — fallback to MSE-only loss
-            pass
-    else:
-        # Already 2D frames (H > 1)
-        ssim_val = compute_ssim(pred, target, device)
-
-
-    return alpha * mse_loss(pred, target) + (1 - alpha) * (1 - ssim_val)
+    # Compute per-pixel weights: 6.0 where target=1, 1.0 where target=0
+    weight = (target * 10.0 + 1.0)  # weight = 610 where dot is, 1 elsewhere
+    loss = nn.functional.binary_cross_entropy(pred, target, weight=weight, reduction='mean')
+    return loss
   
 def train_model(
     physics_type, 
-    hidden_size=64, 
+    hidden_size=128, 
     lr=0.002, 
     epochs=20, 
     early_stopping=False, 
@@ -121,62 +88,66 @@ def train_model(
     batch_size=256, 
     clip_grad=1.0
 ):
-    data_path = f"data/{physics_type}_data.pkl"
-    model_path = f"model_training/{physics_type}_model.pth"
+    dataset_path = resolve_path(f"{physics_type}_data.pkl")
+    model_path = resolve_path(f"{physics_type}_model.pth")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Dataset and DataLoader
-    dataset = PhysicsTrajectoryDataset(data_path, physics_type)
+    dataset = PhysicsTrajectoryDataset(dataset_path, physics_type)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=0)
-
-    # Model
-    example_input, example_target = next(iter(dataloader))
-    input_size = example_input.shape[1]
-    timesteps, height, width = example_target.shape[1:]
     
-    output_dim = example_target.shape[2] if example_target.ndim == 3 else 1
+    # Inspect shape of sample
+    sample_input, sample_target = dataset[0]
+    timesteps, coord_dims = sample_target.shape
+    assert coord_dims == 2, "Expected target shape [T, 2] for (x, y) coordinates"
 
-    model = EncoderDecoder(input_dim=input_size, hidden_size=hidden_size, output_shape=(height, width), output_seq_len=timesteps)
-    model = model.to(device)
+    model = EncoderDecoder(
+        input_dim=sample_input.shape[0],
+        hidden_size=hidden_size,
+        output_seq_len=timesteps,
+        output_shape=None  # Not used in coordinate mode
+    ).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=3)
 
-    # Early Stopping Setup
+    loss_fn = nn.MSELoss()
     best_loss = float('inf')
     wait = 0
     losses = []
 
-    # Training Loop
     for epoch in range(epochs):
-        total_loss = 0
         model.train()
-
+        total_loss = 0
         progress_bar = tqdm(dataloader, desc=f"Epoch {epoch+1}/{epochs}", leave=False)
 
         for batch_inputs, batch_targets in progress_bar:
-            batch_inputs, batch_targets = batch_inputs.to(device), batch_targets.to(device)
+            batch_inputs = batch_inputs.to(device)            # [B, F]
+            batch_targets = batch_targets.to(device)          # [B, T, 2]
 
             optimizer.zero_grad()
-            outputs = model(batch_inputs)
+            outputs = model(batch_inputs)                     # [B, T, 2]
+            loss = loss_fn(outputs, batch_targets)
 
-            loss = hybrid_loss(outputs, batch_targets, device=device)
             loss.backward()
-
-            # Gradient Clipping (for stability)
             if clip_grad:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), clip_grad)
-
             optimizer.step()
 
             total_loss += loss.item()
 
         avg_loss = total_loss / len(dataloader)
         losses.append(avg_loss)
-
         print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.6f}")
-
         scheduler.step(avg_loss)
+
+        # Debug: check one sample trajectory
+        # if epoch % 5 == 0:
+        #     with torch.no_grad():
+        #         coords = outputs[0].detach().cpu().numpy()
+        #         print(f"🔍 Predicted trajectory sample (epoch {epoch+1}):")
+        #         for t, (x, y) in enumerate(coords[:5]):
+        #             print(f"t={t}: (x={x:.3f}, y={y:.3f})")
 
         # Early Stopping Logic
         if early_stopping:
@@ -190,7 +161,11 @@ def train_model(
                     break
 
     # Save model
-    torch.save(model.state_dict(), model_path)
+    torch.save({
+        'model_state': model.state_dict(),
+        'input_dim': sample_input.shape[0],
+        'output_seq_len': timesteps,
+    }, model_path)
     print(f"✅ Model saved to {model_path}")
     return f"✅ Trained and saved {physics_type} model to {model_path}", losses
 
