@@ -3,8 +3,9 @@ import pandas as pd
 import numpy as np
 import time
 from config import get_input_fields, get_simulation_fn, normalize_input, get_param_ranges
+from utils.path_utils import resolve_path
 
-def generate_training_data(physics_type, num_samples=1000, time_steps=50, save_dir="data/"):
+def generate_training_data(physics_type, num_samples=1000, time_steps=50):
     samples = []
     
     start_total = time.time()
@@ -79,7 +80,7 @@ def generate_training_data(physics_type, num_samples=1000, time_steps=50, save_d
         #     print(f"Sample {i}, time={dt:.4f}s")
 
     df = pd.DataFrame(samples)
-    filename = f"{save_dir}/{physics_type}_data.pkl"
+    filename = resolve_path(f"{physics_type}_data.pkl", write_mode=True)
     df.to_pickle(filename)
     print(f"⏱️ Total time: {time.time() - start_total:.2f}s")
     if len(samples) > 0:

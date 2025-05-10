@@ -89,7 +89,7 @@ def train_model(
     clip_grad=1.0
 ):
     dataset_path = resolve_path(f"{physics_type}_data.pkl")
-    model_path = resolve_path(f"{physics_type}_model.pth")
+    model_path = resolve_path(f"{physics_type}_model.pth", write_mode=True)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Dataset and DataLoader

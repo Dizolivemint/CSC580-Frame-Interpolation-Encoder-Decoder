@@ -36,7 +36,7 @@ def generate_image(prompt, frame_number, normalized_pos, output_folder="frames",
         font = ImageFont.load_default()
 
     d.text((10, 10), f"Frame {frame_number}: {prompt[:30]}", fill=(0, 0, 0), font=font)
-    file_path = resolve_path(f"frame_{frame_number:03}.png", output_folder)
+    file_path = resolve_path(f"frame_{frame_number:03}.png", subdir=output_folder, write_mode=True)
     img.save(file_path)
     return file_path
   
@@ -59,8 +59,6 @@ def draw_scene(
         img_size (Tuple[int, int]): Image size
         background_color (Tuple[int, int, int]): RGB color
     """
-    os.makedirs(output_folder, exist_ok=True)
-
     img = Image.new('RGB', img_size, color=background_color)
     draw = ImageDraw.Draw(img)
 
@@ -90,6 +88,6 @@ def draw_scene(
         # Future types: vector fields, heatmaps, force arrows, etc.
 
 
-    path = resolve_path(f"frame_{frame_number:03}.png", output_folder)
+    path = resolve_path(f"frame_{frame_number:03}.png", subdir=output_folder, write_mode=True)
     img.save(path)
     return path

@@ -263,7 +263,7 @@ with gr.Blocks() as demo:
         download_data_file = gr.File(label="Download Link")
 
         def return_dataset_path(physics_type):
-            return os.path.join("/tmp", f"{physics_type}_data.pkl")
+            return resolve_path(f"{physics_type}_data.pkl", write_mode=True)
 
         download_data_btn.click(
             fn=return_dataset_path,
@@ -328,7 +328,7 @@ with gr.Blocks() as demo:
         download_model_file = gr.File(label="Download Link")
 
         def return_model_path(physics_type):
-            return os.path.join("/tmp", "", f"{physics_type}_model.pth")
+            return resolve_path(f"{physics_type}_model.pth", write_mode=True)
 
         download_model_btn.click(
             fn=return_model_path,
