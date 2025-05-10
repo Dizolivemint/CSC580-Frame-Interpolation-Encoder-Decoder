@@ -1,6 +1,7 @@
 from PIL import Image, ImageDraw, ImageFont
 import os
 from utils.normalize_interpolate import normalize_interpolate
+from utils.path_utils import resolve_path
 
 def generate_image(prompt, frame_number, normalized_pos, output_folder="frames", ramp_start=(64, 64),ramp_end=(448, 448), img_size=(512, 512), ball_radius=15):
     """
@@ -35,7 +36,7 @@ def generate_image(prompt, frame_number, normalized_pos, output_folder="frames",
         font = ImageFont.load_default()
 
     d.text((10, 10), f"Frame {frame_number}: {prompt[:30]}", fill=(0, 0, 0), font=font)
-    file_path = os.path.join(output_folder, f"frame_{frame_number:03}.png")
+    file_path = resolve_path(f"frame_{frame_number:03}.png", output_folder)
     img.save(file_path)
     return file_path
   
@@ -89,6 +90,6 @@ def draw_scene(
         # Future types: vector fields, heatmaps, force arrows, etc.
 
 
-    path = os.path.join(output_folder, f"frame_{frame_number:03}.png")
+    path = resolve_path(f"frame_{frame_number:03}.png", output_folder)
     img.save(path)
     return path
