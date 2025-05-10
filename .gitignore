@@ -181,5 +181,16 @@ cython_debug/
 *.jpeg
 *.webp
 *.heic
+tmp/
+
+
+# output
+*.png
+*.mp4
+*.gif
+*.jpg
+*.jpeg
+*.webp
+*.heic
 
 tmp/
