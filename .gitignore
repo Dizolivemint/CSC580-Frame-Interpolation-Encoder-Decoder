@@ -181,4 +181,5 @@ cython_debug/
 *.jpeg
 *.webp
 *.heic
-.pth
+
+tmp/
