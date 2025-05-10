@@ -15,6 +15,7 @@ import torch.nn as nn
 import numpy as np
 from config import normalize_input, denormalize_input, get_input_fields, get_physics_types, get_param_ranges
 from utils.path_utils import resolve_path
+from video_sequencer.simulate_physics import PhysicsSimulator
 
 # --- Available Physics Types ---
 physics_types = get_physics_types()
@@ -151,16 +152,45 @@ def plot_trajectory(physics_type, *inputs, debug=False):
         return None
     fig = plot_coordinates_over_time(pred, title=f"{physics_type.title()} Prediction")
     return fig, pred
-  
+
+def extract_xy_from_frame_sequence(frames):
+    coords = []
+    for frame in frames:
+        yx = np.argwhere(frame == 1.0)
+        if len(yx) > 0:
+            y, x = yx[0]
+            coords.append([x / 63.0, 1.0 - y / 63.0])  # match your prediction's normalized format
+        else:
+            coords.append([0.0, 0.0])  # fallback
+    return np.array(coords)  # [T, 2]
+
 # --- Video Generation ---
 def predict_plot_video(physics_type, *inputs, debug=False):
     norm_input = normalize_input(physics_type, *inputs)
 
-    fig, pred = plot_trajectory(physics_type, *norm_input, debug=debug)
-    if pred is None:
-        return None, None
-    video_mp4_path = generate_frames_and_video(pred)
-    return fig, video_mp4_path
+    pred_fig, pred_coords = plot_trajectory(physics_type, *norm_input, debug=debug)
+    if pred_coords is None:
+        return None, None, None
+      
+    dataset = PhysicsTrajectoryDataset(resolve_path(f"{physics_type}_data.pkl"), physics_type)
+
+    # Search for closest match using the normalized inputs already produced
+    closest_idx = None
+    closest_dist = float('inf')
+
+    for i in range(len(dataset)):
+        dataset_input, dataset_trajectory = dataset[i]
+        dist = np.linalg.norm(dataset_input.numpy() - np.array(norm_input))
+        if dist < closest_dist:
+            closest_dist = dist
+            closest_idx = i
+
+    actual_coords = dataset[closest_idx][1].numpy()
+
+    actual_fig = plot_coordinates_over_time(actual_coords, title=f"{physics_type.title()} Actual")
+    
+    video_mp4_path = generate_frames_and_video(pred_coords)
+    return pred_fig, actual_fig, video_mp4_path
 
 def test_input_sensitivity(physics_type):
     model_path = resolve_path(f"{physics_type}_model.pth")
@@ -358,7 +388,8 @@ with gr.Blocks() as demo:
             
         debug_checkbox = gr.Checkbox(label="Debug", value=False)
         predict_btn = gr.Button("Predict Trajectory")
-        pred_plot = gr.Plot(label="Trajectory Prediction")
+        pred_plot = gr.Plot(label="Predicted Trajectory")
+        actual_plot = gr.Plot(label="Actual Physics Trajectory")
         pred_video = gr.Video(label="Generated Video")
 
         def refresh_inputs(physics_type):
@@ -397,7 +428,7 @@ with gr.Blocks() as demo:
         predict_btn.click(
             fn=predict_switch,
             inputs=[physics_dropdown] + slider_outputs + [debug_checkbox],
-            outputs=[pred_plot, pred_video]
+            outputs=[pred_plot, actual_plot, pred_video]
         )
             
 if __name__ == "__main__":
