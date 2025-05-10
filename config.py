@@ -6,19 +6,6 @@ import os
 
 # --- Input Normalization Configs ---
 physics_input_configs = {
-    "ball_motion": {
-        "fields": ["mass", "angle", "friction"],
-        "normalize": lambda m, a, f: [
-            m / 5.0,
-            (a - 10.0) / 35.0,
-            (f - 0.05) / 0.45
-        ],
-        "denormalize": lambda x: (
-            x[0] * 5.0,
-            x[1] * 35.0 + 10.0,
-            x[2] * 0.45 + 0.05
-        )
-    },
     "projectile_motion": {
         "fields": ["initial_velocity", "angle", "gravity"],
         "normalize": lambda v0, a, g: [
@@ -30,6 +17,19 @@ physics_input_configs = {
             x[0] * 20.0,
             x[1] * 90.0,
             x[2] * 20.0
+        )
+    },
+    "ball_motion": {
+        "fields": ["mass", "angle", "friction"],
+        "normalize": lambda m, a, f: [
+            m / 5.0,
+            (a - 10.0) / 35.0,
+            (f - 0.05) / 0.45
+        ],
+        "denormalize": lambda x: (
+            x[0] * 5.0,
+            x[1] * 35.0 + 10.0,
+            x[2] * 0.45 + 0.05
         )
     }
 }
