@@ -27,6 +27,9 @@ This PyTorch-based system models motion dynamics such as projectile paths and bo
 - Matplotlib
 - NumPy
 
+## Demo
+[capstone.milesexner.com](https://capstone.milesexner.com)
+
 ---
 
 👨‍💻 Developed by [Miles Exner](https://www.linkedin.com/in/milesexner/)
