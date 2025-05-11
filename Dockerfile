@@ -1,5 +1,5 @@
 # Base image with CUDA and Python 3.13
-FROM nvidia/cuda:12.2.0-cudnn8-devel-ubuntu22.04
+FROM python:3.13.0-slim
 
 # Install Python and system packages
 RUN apt-get update && apt-get install -y \
