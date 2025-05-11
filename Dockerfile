@@ -1,30 +1,22 @@
-# Base image with CUDA and Python 3.13
+# Use slim official Python 3.13 base image
 FROM python:3.13.0-slim
 
-# Install Python and system packages
+# Install system packages
 RUN apt-get update && apt-get install -y \
-    software-properties-common \
-    curl \
     git \
     ffmpeg \
     build-essential \
-    && add-apt-repository ppa:deadsnakes/ppa \
-    && apt-get update \
-    && apt-get install -y python3.13 python3.13-dev python3.13-venv python3-pip \
-    && apt-get clean
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Make python3.13 the default
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.13 1
-RUN update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
-
+# Set working directory
 WORKDIR /app
 
-# Copy requirements and install them
+# Install Python dependencies
 COPY requirements.txt .
 RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the code
 COPY . .
 
-# Default Gradio launch
+# Default launch
 CMD ["python", "app.py"]
